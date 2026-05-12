@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  wol-server-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: computer-waker-dev
+    restart: unless-stopped
+    ports:
+      - "7000:5000"
+    environment:
+      - FLASK_DEBUG=1
+      - FLASK_ENV=development
+      - WOL_PORT=5000
+      - WOL_HOST=0.0.0.0
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

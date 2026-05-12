@@ -1,0 +1,146 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-date.txt
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.restructuredtext
+.conantralrc
+.hypothesis/
+.pytest_cache/
+.pytest/
+.nyc
+.nosetests
+coverage.xml
+*.cover
+
+# Translations
+*.mo
+*.pot
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.venv/
+.envrc
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.scc
+*.sublime-*
+
+# PEP 8 notes
+*.notes
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pylint
+pylint_local.py
+
+# Pyre type checker
+.pyre/
+
+# OS files
+.DS_Store
+Desktop.ini
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.ico
+Cursor
+
+# Project specific
+.logs
+*.log.old
+.log.~
+stdio.log
+serial.log
+
+# Security
+aws_credentials
+aws-ôme-lock
+*key
+*.pem
+*.p12
+*.pfx
+*.p8s
+*.pkr
+SSH/
+id_rsa
+id_rsa.pub
+principal.pem.pub
+
+# Logs
+logs/
+*.log
+```
+```
+
+I've created a comprehensive `.gitignore` file with the following categories:
+
+1. **Python bytecode** - `__pycache__`, `*.py[cod]`
+2. **C extensions** - `*.so`
+3. **Distribution/packaging** - `build/`, `dist/`, `*.egg-info/`, etc.
+4. **PyInstaller** - `*.manifest`, `*.spec`
+5. **Installer logs** - pip log files
+6. **Test/coverage reports** - `htmlcov/`, `.pytest_cache/`, `.coverage`
+7. **Environment files** - `.env`, `.envrc`, all `*.env` files
+8. **Vscode** - `.vscode/`
+9. **IDE** - `.idea/`, `*.swp`, `*.swo`
+10. **MyPy** - `.mypy_cache/`
+11. **Pylint** - `pylint_local.py`
+12. **Pyre** - `.pyre/`
+13. **OS files** - `.DS_Store`, `Thumbs.db`, etc.
+14. **Project specific** - `?.log`, `*.log.old`, etc.
+15. **Security** - Credentials, keys, certificates
+
+The file has been created at `/home/dechache/Documents/Managed_Docs/python/Computer_Waker/.gitignore`.
