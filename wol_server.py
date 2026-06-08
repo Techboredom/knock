@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import uuid
 
 # Add site packages to path
-sys.path.append('/home/dechache/Documents/Managed_Docs/python/Computer_Waker')
+sys.path.append('/home/dechache/Knock_web')
 
 try:
     import yaml
@@ -58,7 +58,11 @@ def load_nodes():
     else:
         nodes = []
 
-    node_counter = max(n.get('id', -1) for n in nodes) + 1
+    try:
+        node_counter = max(n.get('id', -1) for n in nodes) + 1
+    except:
+        node_counter = 0
+
     return nodes
 
 def save_nodes():
@@ -374,11 +378,11 @@ def get_available_interfaces():
                             interfaces[node['mac_address'].lower()] = None
 
                         break
-                else:
-                    # Check if interface is UP
-                    if 'UP' in line or 'UPlink' in line:
-                        interfaces[current_if]['state'] = 'UP'
-                        interfaces[current_if]['direction'] = 'RX'
+                    else:
+                        # Check if interface is UP
+                        if 'UP' in line or 'UPlink' in line:
+                            interfaces[current_if]['state'] = 'UP'
+                            interfaces[current_if]['direction'] = 'RX'
     except subprocess.TimeoutExpired:
         pass
     except Exception as e:
@@ -443,6 +447,9 @@ def send_wol_packet(packet):
                                     return result
                             except Exception as e:
                                 print(f"Error sending packet to {interface_name}: {e}")
+            
+            except Exception as e:
+                print({e})
 
     # Mesh network interface (optional)
     try:
@@ -512,10 +519,3 @@ def init_server():
 
 if __name__ == '__main__':
     init_server()
-```
-
-```yaml
-# Installation Requirements
-requirements.txt:
-  "flask>=2.3.0"
-  "pyyaml>=6.0"
