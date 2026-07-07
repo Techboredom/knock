@@ -411,5 +411,33 @@
     setInterval(checkStatus, 30000);
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  // ===== Theme toggle =====
+
+  function initTheme() {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+
+    function applyTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem('knock-theme', theme);
+      btn.innerHTML = theme === 'dark'
+        ? '<i class="fas fa-sun"></i>'
+        : '<i class="fas fa-moon"></i>';
+      btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+      btn.setAttribute('aria-label', btn.title);
+    }
+
+    // Sync button icon with whatever theme the inline script already set
+    var current = document.documentElement.dataset.theme || 'light';
+    applyTheme(current);
+
+    btn.addEventListener('click', function () {
+      applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    initTheme();
+    init();
+  });
 })();

@@ -365,7 +365,7 @@ body {
 }
 
 .table tr:last-child td { border-bottom: none; }
-.table tbody tr:hover { background: #f8fafc; }
+.table tbody tr:hover { background: var(--bg); }
 .table .actions { white-space: nowrap; }
 
 .empty-message {
@@ -399,7 +399,7 @@ body {
   bottom: 1.25rem;
   right: 1.25rem;
   background: var(--text);
-  color: #fff;
+  color: var(--bg);
   border-radius: var(--radius);
   padding: 11px 16px;
   font-size: 14px;
@@ -539,4 +539,74 @@ body {
   .toast { left: 1rem; right: 1rem; max-width: none; bottom: 1rem; }
   .btn { height: 40px; }
   .btn-sm { height: 32px; }
+}
+
+/* ── Theme toggle button ── */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background var(--t), color var(--t), border-color var(--t);
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* ── Dark theme ── */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --brand:       #818cf8;
+  --brand-dark:  #6366f1;
+  --brand-light: #1e1b4b;
+
+  --success:     #34d399;
+  --success-bg:  #022c22;
+  --warning:     #fbbf24;
+  --danger:      #f87171;
+  --danger-bg:   #450a0a;
+
+  --bg:          #0f172a;
+  --surface:     #1e293b;
+  --border:      #334155;
+  --text:        #f1f5f9;
+  --text-2:      #94a3b8;
+  --text-muted:  #64748b;
+
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.5);
+  --shadow:      0 1px 3px rgba(0,0,0,.6), 0 1px 2px rgba(0,0,0,.5);
+  --shadow-md:   0 4px 8px rgba(0,0,0,.6), 0 2px 4px rgba(0,0,0,.5);
+}
+
+/* Elements with hardcoded colours that need dark overrides */
+[data-theme="dark"] code {
+  background: rgba(129,140,248,.12);
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .badge-success {
+  background: var(--success-bg);
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .badge-muted {
+  background: #1e293b;
+  color: var(--text-2);
+}
+
+[data-theme="dark"] .node-count {
+  background: #1e1b4b;
+  color: #a5b4fc;
 }
