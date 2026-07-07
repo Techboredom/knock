@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Computer_Waker - WoL Packet Test Script
+Knock - WoL Packet Test Script
 =======================================
 Simple utility to test Wake-On-LAN magic packet generation
 and validate various MAC address formats.
@@ -95,7 +95,7 @@ def print_packet_details(name, packet):
 
 def main():
     print("\n" + "=" * 60)
-    print("Computer_Waker - WoL Magic Packet Test")
+    print("Knock - WoL Magic Packet Test")
     print("=" * 60)
     print()
 

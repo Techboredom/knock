@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: builder        # uses the builder stage — packages installed, no source copy
-    container_name: computer-waker-dev
+    container_name: knock-dev
     restart: unless-stopped
     network_mode: host       # required for UDP broadcast to reach the LAN
     environment:

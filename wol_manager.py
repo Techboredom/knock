@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-wol_manager - CLI utility for Computer_Waker.
+wol_manager - CLI utility for Knock.
 Interact with a running wol_server instance via HTTP.
 
 Usage:

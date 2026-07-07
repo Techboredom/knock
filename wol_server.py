@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Computer_Waker - Wake-On-LAN Management Server
+Knock - Wake-On-LAN Management Server
 A lightweight web application for managing and waking compute nodes
 using Wake-On-LAN magic packets.
 """
@@ -295,7 +295,7 @@ def initialize_security():
 
 def init_server():
     print("\n" + "=" * 60)
-    print("Computer_Waker - WoL Management Server")
+    print("Knock - WoL Management Server")
     print("=" * 60)
     initialize_security()
     load_nodes()

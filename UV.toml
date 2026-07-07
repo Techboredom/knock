@@ -1,5 +1,5 @@
 [project]
-name = "computer-waker"
+name = "knock"
 version = "1.0.0"
 description = "Python web application for Wake-On-LAN node management"
 authors = [{ name = "Developer", email = "dev@example.com" }]
@@ -22,7 +22,7 @@ dev-dependencies = [
 ]
 
 [project.optional-dependencies]
-all = ["computer-waker[dev]"]
+all = ["knock[dev]"]
 
 [build-system]
 requires = ["hatchling"]
@@ -42,5 +42,5 @@ line_length = 100
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = ["-v", "--cov", "computer_waker"]
+addopts = ["-v", "--cov", "knock"]
 testpaths = ["tests"]

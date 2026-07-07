@@ -1,5 +1,5 @@
 /**
- * Computer_Waker - WoL Management JavaScript
+ * Knock - WoL Management JavaScript
  */
 
 (function () {

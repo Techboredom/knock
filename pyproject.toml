@@ -1,5 +1,5 @@
 [project]
-name = "computer-waker"
+name = "knock"
 version = "1.0.0"
 description = "Wake-On-LAN node management web application for Ubuntu compute nodes"
 readme = "README.md"
@@ -37,7 +37,7 @@ dev = [
     "mypy>=1.8.0",
 ]
 all = [
-    "computer-waker[dev]",
+    "knock[dev]",
 ]
 
 [project.scripts]
@@ -45,9 +45,9 @@ wol-server = "wol_server:main"
 wol-test = "packet_test:main"
 
 [project.urls]
-Homepage = "https://github.com/yourname/computer-waker"
-Documentation = "https://github.com/yourname/computer-waker#readme"
-Issues = "https://github.com/yourname/computer-waker/issues"
+Homepage = "https://github.com/yourname/knock"
+Documentation = "https://github.com/yourname/knock#readme"
+Issues = "https://github.com/yourname/knock/issues"
 
 [tool.uv]
 dev-dependencies = [
@@ -119,7 +119,7 @@ python_functions = [
 
 [tool.coverage.run]
 source = [
-    "computer_waker",
+    "knock",
     "packet_test",
 ]
 branch = true

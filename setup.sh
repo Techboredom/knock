@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Computer_Waker - Setup and Deployment Script
+# Knock - Setup and Deployment Script
 # =============================================
 # Easy setup script for the Wake-On-LAN web application
 #
@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   Computer_Waker Setup Script         ${NC}"
+echo -e "${GREEN}   Knock Setup Script         ${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
@@ -36,9 +36,9 @@ print_warning() {
 }
 
 # Check if already running
-print_info "Checking if Computer_Waker is already running..."
+print_info "Checking if Knock is already running..."
 if ps aux | grep -q "python.*wol_server"; then
-    print_error "Computer_Waker is already running!"
+    print_error "Knock is already running!"
     echo ""
     echo "To stop the running instance:"
     echo "  kill\$(pgrep -f wol_server)"
@@ -46,7 +46,7 @@ if ps aux | grep -q "python.*wol_server"; then
     exit 1
 fi
 
-print_success "Computer_Waker is not running"
+print_success "Knock is not running"
 echo ""
 
 # WoL packets are sent via UDP broadcast — no sudo required.
@@ -107,17 +107,17 @@ echo ""
 print_info "Generating startup script..."
 cat > run.sh << 'EOF'
 #!/bin/bash
-# Computer_Waker Startup Script
+# Knock Startup Script
 # Run this to start the WoL server
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  Starting Computer_Waker...           ${NC}"
+echo -e "${GREEN}  Starting Knock...           ${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
 # Check if running
 if ps aux | grep -q "python.*wol_server"; then
-    echo -e "${YELLOW}Computer_Waker is already running${NC}"
+    echo -e "${YELLOW}Knock is already running${NC}"
     echo ""
     echo "To stop: kill \$(pgrep -f wol_server)"
     exit 1
@@ -128,7 +128,7 @@ mkdir -p data security logs
 
 # Start the server
 echo ""
-echo "Computer_Waker is starting..."
+echo "Knock is starting..."
 echo "Web interface: http://localhost:5000"
 echo ""
 
@@ -182,12 +182,8 @@ echo ""
 echo "=================================="
 echo ""
 
-print_success "Computer_Waker is ready to use!"
+print_success "Knock is ready to use!"
 echo ""
 print_info "To stop the server, press Ctrl+C or run:"
 echo "  pkill -f wol_server"
 echo ""
-
-</parameter>
-</function>
-</tool_call>

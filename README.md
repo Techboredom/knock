@@ -1,4 +1,4 @@
-# Computer_Waker
+# Knock
 
 A Python web application for Wake-On-LAN (WoL) node management. Add your compute nodes once, then wake them up from any browser with a single click.
 

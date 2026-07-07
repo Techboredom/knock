@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: computer-waker-wol
+    container_name: knock-wol
     restart: unless-stopped
     # network_mode: host gives the container full access to the host network,
     # which is required so the UDP broadcast reaches the LAN.
