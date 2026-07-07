@@ -1,15 +1,70 @@
-The user wants me to create a complete WoL web application. I'll write the Python file with Flask, then create supporting files for the web interface.
-</think>
+#!/usr/bin/env python3
+"""
+wol_manager - CLI utility for Computer_Waker.
+Interact with a running wol_server instance via HTTP.
 
-I'll create a complete WoL management web application for you.
+Usage:
+  wol_manager list
+  wol_manager wake <node_id>
+"""
 
-<tool_call>
-<function=edit_file>
-<parameter=display_description>
-Create standalone WoL control web application
-</parameter>
-<parameter=path>
-/home/dechache/Documents/Managed_Docs/python/Computer_Waker/wol_server.py
-</parameter>
-</function>
-</tool_call>
+import json
+import sys
+import urllib.error
+import urllib.request
+
+BASE_URL = "http://localhost:5000"
+
+
+def _get(path: str):
+    with urllib.request.urlopen(f"{BASE_URL}{path}") as resp:
+        return json.loads(resp.read())
+
+
+def _post(path: str):
+    req = urllib.request.Request(f"{BASE_URL}{path}", method="POST")
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
+
+
+def cmd_list():
+    nodes = _get("/api/nodes")
+    if not nodes:
+        print("No nodes configured.")
+        return
+    print(f"{'ID':<5} {'MAC Address':<20} {'Hostname':<20} {'Enabled'}")
+    print("-" * 60)
+    for n in nodes:
+        print(
+            f"{n['id']:<5} {n['mac_address']:<20} "
+            f"{n.get('hostname', ''):<20} {n.get('enabled', False)}"
+        )
+
+
+def cmd_wake(node_id: int):
+    result = _post(f"/api/nodes/{node_id}/wake")
+    status = "OK" if result.get("success") else "FAILED"
+    print(f"[{status}] {result.get('message', '')}")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+    try:
+        if cmd == "list":
+            cmd_list()
+        elif cmd == "wake" and len(sys.argv) > 2:
+            cmd_wake(int(sys.argv[2]))
+        else:
+            print(f"Unknown command: {cmd}")
+            sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"Cannot reach server at {BASE_URL}: {e.reason}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

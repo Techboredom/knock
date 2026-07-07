@@ -1,651 +1,400 @@
 /**
  * Computer_Waker - WoL Management JavaScript
- * ==========================================
- * Handles all client-side interactions for the WoL web application
  */
 
-(function() {
-    'use strict';
+(function () {
+  'use strict';
 
-    // ==================== State Management ====================
+  // ===== API endpoints =====
 
-    const state = {
-        nodes: [],
-        selectedNodes: new Set(),
-        uuid: 'wol-uuid-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        isConnected: false,
-        statusEndpoint: '/api/status'
+  const API = {
+    status: '/api/status',
+    nodes: '/api/nodes',
+    interfaces: '/api/interfaces',
+    nodeById: (id) => `/api/nodes/${id}`,
+    wakeNode: (id) => `/api/nodes/${id}/wake`,
+  };
+
+  // ===== App state =====
+
+  const state = {
+    nodes: [],
+    isConnected: false,
+  };
+
+  // ===== Utilities =====
+
+  function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = String(text == null ? '' : text);
+    return d.innerHTML;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString();
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  function showToast(message, type, duration) {
+    type = type || 'info';
+    duration = duration || 3000;
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    const icons = {
+      success: 'fas fa-check-circle',
+      error: 'fas fa-exclamation-circle',
+      warning: 'fas fa-exclamation-triangle',
+      info: 'fas fa-info-circle',
+    };
+    toast.className = 'toast ' + type + ' show';
+    toast.innerHTML =
+      '<i class="' + (icons[type] || icons.info) + '"></i> ' +
+      '<span>' + escapeHtml(message) + '</span>';
+    setTimeout(function () {
+      toast.classList.remove('show');
+    }, duration);
+  }
+
+  // ===== Fetch wrapper =====
+
+  async function apiFetch(url, options) {
+    const resp = await fetch(url, options || {});
+    const data = await resp.json();
+    if (!resp.ok) {
+      throw new Error(data.error || 'HTTP ' + resp.status);
+    }
+    return data;
+  }
+
+  // ===== Server status =====
+
+  function updateStatusBadge(connected) {
+    const el = document.getElementById('server-status');
+    if (!el) return;
+    if (connected) {
+      el.innerHTML = '<span class="status-dot online"></span> Connected';
+    } else {
+      el.innerHTML = '<span class="status-dot offline"></span> Disconnected';
+    }
+  }
+
+  async function checkStatus() {
+    try {
+      const data = await apiFetch(API.status);
+      state.isConnected = data.server_status === 'running';
+    } catch (_) {
+      state.isConnected = false;
+    }
+    updateStatusBadge(state.isConnected);
+  }
+
+  // ===== Load & render nodes =====
+
+  async function loadNodes() {
+    try {
+      const data = await apiFetch(API.nodes);
+      state.nodes = Array.isArray(data) ? data : [];
+      renderNodesTable();
+      updateWakeSelect();
+    } catch (err) {
+      showToast('Failed to load nodes: ' + err.message, 'error');
+    }
+  }
+
+  function renderNodesTable() {
+    const tbody = document.getElementById('nodes-tbody');
+    if (!tbody) return;
+
+    const countEl = document.querySelector('.node-count');
+    if (countEl) countEl.textContent = state.nodes.length;
+
+    if (state.nodes.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" class="empty-message">No nodes configured. Add one above.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = state.nodes.map(function (node) {
+      const enabledBadge = node.enabled
+        ? '<span class="badge badge-success">Enabled</span>'
+        : '<span class="badge badge-secondary">Disabled</span>';
+      const wakeDisabled = node.enabled ? '' : ' disabled';
+      return (
+        '<tr data-id="' + node.id + '">' +
+        '<td>' + escapeHtml(node.mac_address) + '</td>' +
+        '<td>' + escapeHtml(node.hostname || '—') + '</td>' +
+        '<td>' + escapeHtml(node.ip_address || '—') + '</td>' +
+        '<td>' + enabledBadge + '</td>' +
+        '<td>' + escapeHtml(formatDate(node.last_wol)) + '</td>' +
+        '<td class="actions">' +
+          '<button class="btn btn-sm btn-success wake-btn"' +
+            ' data-id="' + node.id + '"' + wakeDisabled + '>' +
+            '<i class="fas fa-power-off"></i> Wake' +
+          '</button> ' +
+          '<button class="btn btn-sm btn-secondary edit-btn"' +
+            ' data-id="' + node.id + '">' +
+            '<i class="fas fa-edit"></i>' +
+          '</button> ' +
+          '<button class="btn btn-sm btn-danger delete-btn"' +
+            ' data-id="' + node.id + '"' +
+            ' data-mac="' + escapeHtml(node.mac_address) + '">' +
+            '<i class="fas fa-trash"></i>' +
+          '</button>' +
+        '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    tbody.querySelectorAll('.wake-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        wakeNode(parseInt(btn.dataset.id, 10));
+      });
+    });
+    tbody.querySelectorAll('.edit-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openEditModal(parseInt(btn.dataset.id, 10));
+      });
+    });
+    tbody.querySelectorAll('.delete-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openDeleteModal(parseInt(btn.dataset.id, 10), btn.dataset.mac);
+      });
+    });
+  }
+
+  function updateWakeSelect() {
+    const sel = document.getElementById('wake-select');
+    if (!sel) return;
+    const enabled = state.nodes.filter(function (n) { return n.enabled; });
+    sel.innerHTML =
+      '<option value="">-- Select a node to wake --</option>' +
+      enabled.map(function (n) {
+        return '<option value="' + n.id + '">' +
+          escapeHtml(n.hostname || n.mac_address) +
+          '</option>';
+      }).join('');
+  }
+
+  // ===== Wake =====
+
+  async function wakeNode(nodeId) {
+    const node = state.nodes.find(function (n) { return n.id === nodeId; });
+    const label = node ? (node.hostname || node.mac_address) : nodeId;
+    try {
+      const data = await apiFetch(API.wakeNode(nodeId), { method: 'POST' });
+      showToast(
+        (data.success ? 'Wake packet sent to ' : 'Wake failed for ') + label,
+        data.success ? 'success' : 'warning'
+      );
+      if (data.success) await loadNodes();
+    } catch (err) {
+      showToast('Wake error: ' + err.message, 'error');
+    }
+  }
+
+  // ===== Add node form =====
+
+  async function handleAddNode(evt) {
+    evt.preventDefault();
+    const form = evt.target;
+    const submitBtn = form.querySelector('[type=submit]');
+
+    const payload = {
+      mac_address: form.mac_address.value.trim(),
+      hostname: form.hostname.value.trim(),
+      ip_address: form.ip.value.trim(),
+      description: form.description.value.trim(),
+      enabled: form.enabled.checked,
     };
 
-    // ==================== Utility Functions ====================
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding...';
 
-    function showToast(message, type = 'info', duration = 3000) {
-        const toast = document.getElementById('toast');
-        if (!toast) return;
-
-        const iconMap = {
-            'success': 'fas fa-check-circle',
-            'error': 'fas fa-exclamation-circle',
-            'info': 'fas fa-info-circle',
-            'warning': 'fas fa-exclamation-triangle'
-        };
-
-        const badgeType = type === 'success' ? 'success' : (type === 'error' ? 'error' : (type === 'warning' ? 'warning' : 'info'));
-
-        toast.className = `toast toast-${badgeType} show`;
-        toast.innerHTML = `
-            <i class="${iconMap[type] || 'fas fa-circle'}"></i>
-            <span>${escapeHtml(message)}</span>
-        `;
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, duration);
+    try {
+      await apiFetch(API.nodes, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      showToast('Node added successfully', 'success');
+      form.reset();
+      await loadNodes();
+    } catch (err) {
+      showToast('Failed to add node: ' + err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Node';
     }
+  }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+  // ===== Delete node =====
+
+  let pendingDeleteId = null;
+
+  function openDeleteModal(nodeId, mac) {
+    pendingDeleteId = nodeId;
+    const display = document.getElementById('delete-mac-display');
+    if (display) display.textContent = mac;
+    document.getElementById('delete-modal').style.display = 'block';
+  }
+
+  async function confirmDelete(evt) {
+    evt.preventDefault();
+    if (pendingDeleteId === null) return;
+    const id = pendingDeleteId;
+    pendingDeleteId = null;
+    try {
+      await apiFetch(API.nodeById(id), { method: 'DELETE' });
+      showToast('Node deleted', 'success');
+      document.getElementById('delete-modal').style.display = 'none';
+      await loadNodes();
+    } catch (err) {
+      showToast('Delete failed: ' + err.message, 'error');
     }
-
-    function formatMac(mac) {
-        if (!mac) return '';
-        return mac.replace(/(.{2})(?=.)/g, '$1:');
-    }
-
-    // ==================== Server Connection ====================
-
-    async function connectToServer() {
-        try {
-            const response = await fetch(state.statusEndpoint);
-            const data = await response.json();
-
-            if (data.server_status === 'running') {
-                state.isConnected = true;
-                updateServerStatus(true);
-                loadNodes();
-                loadInterfaces();
-                return true;
-            } else {
-                state.isConnected = false;
-                updateServerStatus(false);
-                showToast('Server is not running', 'error');
-                return false;
-            }
-        } catch (error) {
-            state.isConnected = false;
-            updateServerStatus(false);
-            console.error('Connection error:', error);
-            return false;
-        }
-    }
-
-    function updateServerStatus(connected) {
-        const statusEl = document.getElementById('server-status');
-        const dot = statusEl.querySelector('.status-dot');
-
-        if (connected) {
-            statusEl.innerHTML = `<span class="status-dot"></span>Connected`;
-        } else {
-            statusEl.innerHTML = `<span class="status-dot"></span>Connecting...`;
-        }
-    }
-
-    // Automatic reconnection
-    function connectLoop() {
-        pollConnection();
-        setTimeout(connectLoop, 10000);
-    }
-
-    // ==================== Node Management ====================
-
-    async function loadNodes() {
-        console.log('Connecting to server...');
-
-        try {
-            const response = await fetch(state.statusEndpoint);
-            if (!response.ok) {
-                console.log('Could not connect to server, brute-force connecting...');
-                state.isConnected = true;
-                loadNodesFromServer();
-                return;
-            }
-
-            const statusData = await response.json();
-            console.log('Connected to server!');
-
-            if (statusData.server_status === 'running') {
-                loadNodesFromServer();
-                loadInterfaces();
-            } else {
-                loadInterfaces();
-            }
-        } catch (error) {
-            console.error('Connection error:', error);
-        }
-    }
-
-    // Main navigation redirect to pseudolink
-    async function mainNavigation() {
-        let isRunning = false;
-        try {
-            while (isRunning === false) {
-                const response = await fetch(state.statusEndpoint);
-                const statusData = await response.json();
-
-                if (statusData.server_status === 'running') {
-                    isRunning = true;
-                    break;
-                } else {
-                    // Trying to connect to server again
-                    break;
-                }
-            }
-
-            if (isRunning) {
-                // Load nodes from server
-                await loadNodesFromServer();
-
-                loadInterfaces();
-                connectLoop();
-            } else {
-                loseConnection();
-                connectLoop();
-            }
-        } catch (error) {
-            console.error('Error in main navigation:', error);
-            loseConnection();
-            connectLoop();
-        }
-    }
-
-    async function loadNodesFromServer() {
-        try {
-            const response = await fetch(`/${state.uuid}/api/nodes`);
-            const data = await response.json();
-
-            if (data.success && Array.isArray(data.nodes)) {
-                state.nodes = data.nodes;
-                renderNodes();
-                updateNodeCount(data.nodes.length);
-            } else {
-                throw new Error('Invalid response format');
-            }
-        } catch (error) {
-            console.error('Error loading nodes:', error);
-            showToast('Failed to load nodes', 'error');
-        }
-    }
-
-    function renderNodes() {
-        const tbody = document.getElementById('nodes-tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = state.nodes.map((node, index) => `
-            <tr data-id="${node.id}">
-                <td><span class="node-id">${node.id}</span></td>
-                <td><a href="/details/${node.id}" target="_blank">${formatMac(node.mac_address)}</a></td>
-                <td><span class="state-${node.enabled ? 'enabled' : 'disabled'}">${node.enabled ? 'Enabled' : 'Disabled'}</span></td>
-            </tr>
-        `).join('');
-
-        // Add click event listeners
-        tbody.querySelectorAll('.state-enabled').forEach(el => {
-            el.addEventListener('click', function() {
-                setStateEnabled(this.closest('tr'), true);
-            });
-        });
-
-        tbody.querySelectorAll('.state-disabled').forEach(el => {
-            el.addEventListener('click', function() {
-                setStateEnabled(this.closest('tr'), false);
-            });
-        });
-    }
-
-    function emptyNodes(elementId) {
-        if (elementId) {
-            document.getElementById(elementId).innerHTML = '';
-        }
-    }
-
-    function updateNodeCount(count) {
-        const countEl = document.querySelector('.node-count');
-        if (countEl) {
-            countEl.textContent = count;
-        }
-    }
-
-    function renderLastnodes() {
-        const tbody = document.querySelector('#nodes-tbody tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = state.nodes.map(node => {
-            const classes = [];
-            const baseClass = node.enabled ? 'enabled' : 'disabled';
-            classes.push(`state-${baseClass}`);
-
-            return `
-            <tr data-id="${node.id}" class="${classes.join(' ')}">
-                <td><span class="node-id">${node.id}</span></td>
-                <td><a href="/details/${node.id}" target="_blank">${formatMac(node.mac_address)}</a></td>
-                <td><span class="state-${node.enabled ? 'enabled' : 'disabled'}">${node.enabled ? 'Enabled' : 'Disabled'}</span></td>
-            </tr>
-            `;
-        }).join('');
-    }
-
-    // ==================== Wake Node ====================
-
-    function updateWakePersonInfo() {
-        const wakeInfoEntry = document.querySelector('.wake-info');
-        if (wakeInfoEntry) {
-            wakeInfoEntry.className = `node-state-wake ${document.querySelector('.state-enabled') ? 'enabled' : ''}`;
-            wakeInfoEntry.textContent = node.enabled ? 'Enabled' : 'Disabled';
-        }
-    }
-
-    function wakeNodeActions() {
-        if (document.getElementById('wake-btn')) {
-            document.getElementById('wake-btn').addEventListener('click', async function eventHandler() {
-                showToast('Select a node to wake');
-
-                wakeSingle();
-            });
-        } else {
-            showToast('Failed to connect', 'error', 5000);
-            eventHandler();
-            event.preventDefault();
-        }
-    }
-
-    async function wakeSingle() {
-        const wakeSelect = document.getElementById('wake-single-select');
-        if (!wakeSelect) return;
-
-        const node = waveSingleSelection(wakeSelect.options[wakeSelect.selectedIndex]);
-        if (!node) {
-            showToast('Please select a node', 'warning');
-            return;
-        }
-
-        const success = await wakeNodeBySelector(node);
-        if (success) {
-            showToast('Packet sent!', 'success');
-            updateWakeInfo();
-        } else {
-            showToast('Failed to wake node', 'error');
-        }
-    }
-
-    async function wakeNodeById(nodeId) {
-        try {
-            const response = await fetch(`/nodes/${nodeId}/wake`, {
-                method: 'POST'
-            });
-            const data = await response.json();
-
-            if (data.status) {
-                console.log('Wake successful:', nodeId);
-                showToast('Wake successful!', 'success');
-                return true;
-            } else {
-                console.error('Wake failed:', data.message);
-                showToast(data.message || 'Wake failed', 'error');
-                return false;
-            }
-        } catch (error) {
-            console.error('Wake error:', error);
-            showToast('Error calling server', 'error');
-            return false;
-        }
-    }
-
-    // ==================== Interface Management ====================
-
-    async function loadInterfaces() {
-        try {
-            const response = await fetch(api_status);
-            if (!response.ok) return;
-
-            const interfaces = await response.json();
-
-            const tbody = document.getElementById('interfaces-tbody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    ${interfaces.map(interface => `
-                        <tr>
-                            <td><a href="${interface.ip}" target="_blank">${interface.name}</a></td>
-                            <td><span class="type-${interface.type}">${interface.type}</span></td>
-                            <td><span class="state-${interface.enabled ? 'enabled' : 'disabled'}">${interface.enabled ? 'Enabled' : 'Disabled'}</span></td>
-                        </tr>
-                    `).join('')}
-                `;
-            }
-        } catch (error) {
-            console.error('Error loading interfaces:', error);
-        }
-    }
-
-    // ==================== Add/Edit Node ====================
-
-    async function addNode() {
-        const addNodeBtn = document.getElementById('add-node-button');
-        if (!addNodeBtn) return;
-
-        try {
-            addNodeBtn.innerText = 'Creating node...';
-            addNodeBtn.disabled = true;
-
-            const response = await fetch('/api/nodes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    hostname: document.getElementById('hostname').value,
-                    mac_address: document.getElementById('mac_address').value,
-                    description: document.getElementById('description').value
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                showToast(`Node ${data.node_id} created successfully!`, 'success');
-                await loadNodes();
-            } else {
-                showToast('Failed to create node', 'error');
-            } finally {
-                addNodeBtn.disabled = false;
-                addNodeBtn.innerText = 'Add Return';
-            }
-        } catch (error) {
-            showToast('Error creating node', 'error');
-            addNodeBtn.disabled = false;
-            addNodeBtn.innerText = 'Add Return';
-        }
-    }
-
-    // ==================== Edit/Delete Node ====================
-
-    async function deleteNode() {
-        const deleteBtn = document.getElementById('delete-button');
-        if (!deleteBtn) return;
-
-        const success = confirm('Are you sure you want to delete this node?');
-        if (!success) return;
-
-        try {
-            deleteBtn.innerText = 'Deleting...';
-            deleteBtn.disabled = true;
-
-            const response = await fetch(`/api/nodes/${state.selectedNode.id}/delete`;
-
-            deleteBtn.innerText = 'Deleting...';
-
-            if (response.ok) {
-                showToast('Node deleted successfully', 'success');
-                await loadNodes();
-            } else {
-                showToast('Failed to delete node', 'error');
-            } finally {
-                deleteBtn.disabled = false;
-                deleteBtn.innerText = 'Delete';
-            }
-        } catch (error) {
-            showToast('Error deleting node', 'error');
-            deleteBtn.disabled = false;
-            deleteBtn.innerText = 'Delete';
-        }
-    }
-
-    // ==================== Save Node ====================
-
-    async function saveNode() {
-        const success = confirm('Are you sure you want to save this node?');
-        if (!success) return;
-
-        try {
-            saveBtnId.innerText = 'Saving...';
-            saveBtnId.disabled = true;
-
-            const response = await fetch(`/api/nodes/${state.savedNode.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    hostname: document.getElementById('modal-hostname').value,
-                    mac_address: document.getElementById('modal-mac').value,
-                    description: document.getElementById('modal-description').value
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                showToast('Node updated successfully', 'success');
-                await loadNodes();
-            } else {
-                showToast('Failed to save node', 'error');
-            } finally {
-                saveBtnId.disabled = false;
-                saveBtnId.innerText = 'Save';
-            }
-        } catch (error) {
-            showToast('Error saving node', 'error');
-            saveBtnId.disabled = false;
-            saveBtnId.innerText = 'Save';
-        }
-    }
-
-    // ==================== Modal Functions ====================
-
-    async function editNode() {
-        const modal = document.getElementById('delete-modal');
-        if (!modal) return;
-
-        modal.style.display = 'block';
-        const modalId = document.getElementById('modal-id');
-
-        // Find the node to edit by ID
-        const node = nodeById(parseInt(modalId.value));
-        if (!node) return;
-
-        const hostname = node.get('hostname') || '';
-        const ip = node.get('ip_address') || '';
-        const mac = node.get('mac_address') || '';
-
-        document.getElementById('modal-hostname').value = hostname;
-        document.getElementById('modal-ip').value = ip;
-        document.getElementById('modal-mac').value = mac;
-        document.getElementById('modal-description').value = node.get('description') || '';
-    }
-
-    // ==================== Node Selection ====================
-
-    function selectNodes() {
-        const radioButtons = document.getElementsByName('node-selection');
-        for (const radio of radioButtons) {
-            if (radio.checked) {
-                state.selectedNodes.add(radio.dataset.id);
-            } else {
-                state.selectedNodes.delete(radio.dataset.id);
-            }
-        }
-
-        renderSelectedNodes();
-    }
-
-    function renderSelectedNodes() {
-        const selectedNodesEl = document.getElementById('selected-nodes');
-        if (!selectedNodesEl) return;
-
-        let html = '';
-
-        if (state.selectedNodes.size > 0) {
-            html = '<p><em>Active nodes:</em> ' + state.selectedNodes.size + ' selected</p>';
-        }
-
-        selectedNodesEl.innerHTML = html;
-    }
-
-    function getSelectedNodes() {
-        return Array.from(state.selectedNodes);
-    }
-
-    // ==================== Controller Functions ====================
-
-    function renderMiddleNames() {
-        const table = document.querySelector('#nodes-list table');
-        if (!table) return;
-
-        table.innerHTML = `
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>MAC Address</th>
-                    <th>State</th>
-                    <th>Actions</td>
-                </thead>
-            </tr>
-        `;
-    }
-
-    function fillTable() {
-        const table = document.getElementById('nodes-table');
-        if (!table) return;
-
-        const rows = state.nodes.map((node, index) => `
-            <tr data-id="${node.id}">
-                <td><span class="node-id">${node.id}</span></td>
-                <td><a href="/details/${node.id}" target="_blank">${formatMac(node.mac_address)}</a></td>
-                <td><span class="state-${node.enabled ? 'enabled' : 'disabled'}">${node.enabled ? 'Enabled' : 'Disabled'}</span></td>
-            </tr>
-        `).join('');
-
-        table.innerHTML = `<tbody>${rows}</tbody>`;
-
-        // Add event listeners
-        table.querySelectorAll('.state-enabled').forEach(el => {
-            el.addEventListener('click', function() {
-                setStateEnabled(this.closest('tr'), true);
-            });
-        });
-    }
-
-    // ==================== Initialization ====================
-
-    function initServerStatus() {
-        setInterval(async function() {
-            try {
-                const response = await fetch(state.statusEndpoint);
-                const data = await response.json();
-
-                if (data.server_status === 'running') {
-                    state.isConnected = true;
-                    loadNodes();
-                    loadInterfaces();
-                    updateServerStatus(true);
-                } else {
-                    state.isConnected = false;
-                    updateServerStatus(false);
-                }
-            } catch (error) {
-                console.error('Status check error:', error);
-            }
-        }, 10000);
-    }
-
-    async function checkConnection() {
-        try {
-            const response = await fetch(state.statusEndpoint);
-            const data = await response.json();
-
-            if (data.server_status === 'running') {
-                state.isConnected = true;
-                loadNodes();
-                loadInterfaces();
-                return true;
-            }
-        } catch (error) {
-            console.error('Connection check error:', error);
-        }
-        return false;
-    }
-
-    function startServer() {
-        connectLoop();
-        checkConnection();
-        pollConnection();
-        document.addEventListener('DOMContentLoaded', function() {
-            mainNavigation();
-            initServerStatus();
-        });
-    }
-
-    function connectLoop() {
-        pollConnection();
-        setTimeout(connectLoop, 10000);
-    }
-
-    async function pollConnection() {
-        const response = await fetch(state.statusEndpoint);
-        if (!response.ok) {
-            console.log('Could not connect to server, brute-force connecting...');
-            state.isConnected = true;
-            loadNodes();
-            loadInterfaces();
-        } else {
-            const data = await response.json();
-            console.log('Connected to server!');
-            if (data.server_status === 'running') {
-                loadNodes();
-                loadInterfaces();
-            }
-        }
-    }
-
-    function loseConnection() {
-        state.isConnected = false;
-        document.getElementById('server-status').style.display = 'none';
-        console.log('Lost connection to server');
-    }
-
-    // ==================== Event Listeners ====================
-
-    async function refreshTable() {
-        try {
-            const response = await fetch(`/api/nodes`);
-            const data = await response.json();
-
-            if (data.success) {
-                emptyNodes('nodes-tbody');
-                fillTable();
-                updateNodeCount(data.nodes.length);
-            }
-        } catch (error) {
-            console.error('Refresh error:', error);
-        }
-    }
-
-    function addNodeSection() {
-        // Implement if needed
-        const addNodeBtn = document.getElementById('add-node-button');
-        if (addNodeBtn) {
-            addNodeBtn.addEventListener('click', addNode);
-        }
-    }
-
-    // ==================== Public API ====================
-
-    window.wolServer = {
-        connect: connectLoop,
-        loadNodes: loadNodes,
-        wakeNode: wakeNodeById,
-        refreshTable: refreshTable,
-        init: startServer
+  }
+
+  // ===== Edit node =====
+
+  let editingNodeId = null;
+
+  function openEditModal(nodeId) {
+    const node = state.nodes.find(function (n) { return n.id === nodeId; });
+    if (!node) return;
+    editingNodeId = nodeId;
+
+    document.getElementById('modal-mac').value = node.mac_address || '';
+    document.getElementById('modal-hostname').value = node.hostname || '';
+    document.getElementById('modal-ip').value = node.ip_address || '';
+    document.getElementById('modal-description').value = node.description || '';
+    document.getElementById('modal-enabled').checked = !!node.enabled;
+
+    const title = document.getElementById('modal-title');
+    if (title) title.textContent = 'Edit Node — ' + (node.hostname || node.mac_address);
+
+    document.getElementById('node-modal').style.display = 'block';
+  }
+
+  async function handleSaveNode(evt) {
+    evt.preventDefault();
+    if (editingNodeId === null) return;
+    const id = editingNodeId;
+    const submitBtn = evt.target.querySelector('[type=submit]');
+
+    const payload = {
+      mac_address: document.getElementById('modal-mac').value.trim(),
+      hostname: document.getElementById('modal-hostname').value.trim(),
+      ip_address: document.getElementById('modal-ip').value.trim(),
+      description: document.getElementById('modal-description').value.trim(),
+      enabled: document.getElementById('modal-enabled').checked,
     };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    try {
+      await apiFetch(API.nodeById(id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      showToast('Node updated', 'success');
+      document.getElementById('node-modal').style.display = 'none';
+      editingNodeId = null;
+      await loadNodes();
+    } catch (err) {
+      showToast('Save failed: ' + err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> Save';
+    }
+  }
+
+  // ===== Interfaces =====
+
+  async function loadInterfaces() {
+    const tbody = document.getElementById('interfaces-tbody');
+    if (!tbody) return;
+    try {
+      const data = await apiFetch(API.interfaces);
+      if (!Array.isArray(data) || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-message">No interfaces found</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(function (iface) {
+        const stateBadge = iface.state === 'UP'
+          ? '<span class="badge badge-success">UP</span>'
+          : '<span class="badge badge-secondary">' + escapeHtml(iface.state) + '</span>';
+        return (
+          '<tr>' +
+          '<td>' + escapeHtml(iface.name) + '</td>' +
+          '<td>' + escapeHtml(iface.ip || '—') + '</td>' +
+          '<td>' + stateBadge + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+    } catch (err) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-message">Failed to load interfaces</td></tr>';
+      console.error('Interfaces error:', err);
+    }
+  }
+
+  // ===== Modal helpers =====
+
+  function initModals() {
+    document.querySelectorAll('.modal .close').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.closest('.modal').style.display = 'none';
+      });
+    });
+    document.querySelectorAll('.modal').forEach(function (modal) {
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.style.display = 'none';
+      });
+    });
+  }
+
+  // ===== Initialization =====
+
+  async function init() {
+    initModals();
+
+    const addForm = document.getElementById('add-node-form');
+    if (addForm) addForm.addEventListener('submit', handleAddNode);
+
+    const editForm = document.getElementById('node-details-form');
+    if (editForm) editForm.addEventListener('submit', handleSaveNode);
+
+    const deleteForm = document.getElementById('delete-form');
+    if (deleteForm) deleteForm.addEventListener('submit', confirmDelete);
+
+    const wakeBtn = document.getElementById('wake-btn');
+    if (wakeBtn) {
+      wakeBtn.addEventListener('click', function () {
+        const sel = document.getElementById('wake-select');
+        const val = sel && sel.value ? parseInt(sel.value, 10) : null;
+        if (!val) { showToast('Please select a node first', 'warning'); return; }
+        wakeNode(val);
+      });
+    }
+
+    const refreshNodesBtn = document.getElementById('refresh-nodes-btn');
+    if (refreshNodesBtn) refreshNodesBtn.addEventListener('click', loadNodes);
+
+    document.querySelectorAll('.refresh-interfaces').forEach(function (btn) {
+      btn.addEventListener('click', loadInterfaces);
+    });
+
+    await checkStatus();
+    await loadNodes();
+    await loadInterfaces();
+
+    // Poll server status every 30 s
+    setInterval(checkStatus, 30000);
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
 })();

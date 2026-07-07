@@ -377,6 +377,117 @@ i {
   font-weight: 300;
 }
 
+/* Sections fill full width */
+.section {
+  width: 100%;
+}
+
+/* Card header with title + action button side by side */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.card-header h2 {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* Small button variant */
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Status dot colour variants */
+.status-dot.online {
+  background: var(--success-color);
+}
+
+.status-dot.offline {
+  background: var(--danger-color);
+  animation: none;
+}
+
+/* Inline badges (Enabled / Disabled / UP / DOWN) */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.badge-success { background: var(--success-color); }
+.badge-secondary { background: #95a5a6; }
+.badge-danger { background: var(--danger-color); }
+
+/* Modal close button */
+.close {
+  float: right;
+  font-size: 24px;
+  font-weight: bold;
+  color: #aaa;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.close:hover { color: var(--danger-color); }
+
+/* Modal body spacing */
+.modal-body {
+  margin: 15px 0;
+}
+
+/* Inline form group (checkbox row, button row) */
+.form-group-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Empty table message */
+.empty-message {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-style: italic;
+}
+
+/* Action buttons in table cells */
+.actions {
+  white-space: nowrap;
+}
+
+/* Help text under inputs */
+.help-text {
+  font-size: 12px;
+  color: #888;
+}
+
+/* MAC address display in delete modal */
+.mac-address-display {
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--dark-color);
+  margin-top: 8px;
+}
+
+/* Section description text */
+.section-desc {
+  color: #666;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+/* Warning text colour */
+.text-warning { color: var(--warning-color); }
+
 /* Responsive */
 @media (max-width: 768px) {
   .header {
