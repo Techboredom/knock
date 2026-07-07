@@ -293,14 +293,18 @@ def initialize_security():
         pass
 
 
+# Run at import time so Gunicorn workers start with data loaded.
+initialize_security()
+load_nodes()
+
+
 def init_server():
+    """Start the Flask dev server (used when running directly, not via Gunicorn)."""
+    host = os.environ.get("WOL_HOST", "0.0.0.0")
+    port = int(os.environ.get("WOL_PORT", "5000"))
     print("\n" + "=" * 60)
     print("Knock - WoL Management Server")
     print("=" * 60)
-    initialize_security()
-    load_nodes()
-    host = os.environ.get("WOL_HOST", "0.0.0.0")
-    port = int(os.environ.get("WOL_PORT", "5000"))
     print(f"Web interface: http://localhost:{port}")
     print(f"API endpoint:  http://localhost:{port}/api/")
     print("=" * 60 + "\n")

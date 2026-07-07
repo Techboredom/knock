@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 
-RUN pip install --no-cache-dir flask pyyaml python-dotenv psutil
+RUN pip install --no-cache-dir flask pyyaml python-dotenv psutil gunicorn
 
 # Default CMD for the dev compose (target: builder) — source is bind-mounted
 CMD ["python3", "wol_server.py"]
@@ -30,4 +30,4 @@ ENV WOL_HOST=0.0.0.0 \
 
 EXPOSE 5000
 
-CMD ["python3", "wol_server.py"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${WOL_PORT:-5000} --workers 1 --threads 4 --timeout 30 --access-logfile - --error-logfile - wol_server:app"]
