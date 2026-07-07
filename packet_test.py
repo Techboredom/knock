@@ -1,27 +1,22 @@
 #!/usr/bin/env python3
 """
 Knock - WoL Packet Test Script
-=======================================
-Simple utility to test Wake-On-LAN magic packet generation
-and validate various MAC address formats.
+================================
+Validates MAC address formats and verifies magic packet generation
+produces the correct 102-byte structure.
 """
 
+import socket
 import sys
 
 
-def validate_mac(mac):
-    """Validate MAC address format."""
-    if not mac or len(mac) < 5:
+def validate_mac(mac: str) -> bool:
+    """Return True if mac is a valid 12-hex-digit MAC in any common format."""
+    if not mac:
         return False
-
-    # Clean MAC (remove colons, hyphens)
-    clean = "".join(c for c in mac if c.isalnum())
-
-    # Must be exactly 12 hex characters after cleaning
-    if len(clean) < 12 or len(clean) > 12:
+    clean = mac.replace(":", "").replace("-", "").replace(".", "").lower()
+    if len(clean) != 12:
         return False
-
-    # Verify all characters are hex
     try:
         int(clean, 16)
         return True
@@ -29,117 +24,89 @@ def validate_mac(mac):
         return False
 
 
-def generate_wol_packet(mac):
-    """Generate a standard WoL magic packet."""
-    if not validate_mac(mac):
+def generate_wol_packet(mac: str) -> bytes | None:
+    """Generate a standard 102-byte WoL magic packet."""
+    clean = mac.replace(":", "").replace("-", "").replace(".", "").lower()
+    if len(clean) != 12:
         return None
-
-    # Clean the MAC
-    clean = "".join(c for c in mac if c.isalnum())
-    mac_clean = clean[:12]  # Take first 12 if longer
-
-    # Extract first 6 bytes (OUI)
-    bytes_list = []
     try:
-        for i in range(0, 12, 2):
-            byte_val = int(mac_clean[i : i + 2], 16)
-            bytes_list.append(byte_val)
+        mac_bytes = bytes.fromhex(clean)
     except ValueError:
         return None
-
-    oui = bytes(bytes_list[:6])
-
-    # Build packet: FF FE + OUI x 6
-    packet = bytearray()
-    packet.append(0xFF)  # Sync byte (1 byte)
-    packet.append(0xFE)  # Header (1 byte)
-    packet.extend(oui)  # First OUI (6 bytes)
-    for _ in range(5):  # 5 more OUI copies (30 bytes)
-        packet.extend(oui)
-
-    return bytes(packet)
+    return b"\xff" * 6 + mac_bytes * 16
 
 
-def format_hex(packet):
-    """Format bytes as hex string with spaces and colons."""
+def print_packet_details(mac: str, packet: bytes) -> None:
+    print(f"\n  MAC : {mac}")
+    print(f"  Size: {len(packet)} bytes")
+    print(f"  Sync: {packet[:6].hex(':')}")
+    print(f"  MAC×1: {packet[6:12].hex(':')}")
+    print(f"  MAC×2: {packet[12:18].hex(':')}")
+    print(f"  ...   (×16 total)")
+
+
+def send_test_packet(mac: str) -> None:
+    """Send a real magic packet via UDP broadcast (optional live test)."""
+    packet = generate_wol_packet(mac)
     if not packet:
-        return ""
-    return " ".join(f"{b:02x}" for b in packet)
-
-
-def format_hex_colon(packet):
-    """Format bytes as colon-separated hex."""
-    if not packet:
-        return ""
-    return ":".join(f"{b:02x}" for b in packet)
-
-
-def print_packet_details(name, packet):
-    """Print detailed packet information."""
-    if not packet:
+        print(f"  ✗ Could not generate packet for {mac}")
         return
-
-    print(f"\n{'=' * 60}")
-    print(f"Package name: {name}")
-    print(f"Total length: {len(packet)} bytes")
-    print(f"Hex with spaces: {format_hex(packet)}")
-    print(f"Hex with colons: {format_hex_colon(packet)}")
-    print(f"\nByte breakdown:")
-    print(f"  Byte 0:  0x{packet[0]:02x} (sync)")
-    print(f"  Byte 1:  0x{packet[1]:02x} (header)")
-    bytes_str = [f"0x{b:02x}" for b in packet[2:]]
-    for i, b in enumerate(bytes_str):
-        print(f"  Byte {3 + i}:  {b}")
-    print("=" * 60 + "\n")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            s.sendto(packet, ("<broadcast>", 9))
+        print(f"  ✓ Packet sent to broadcast:9 for {mac}")
+    except OSError as e:
+        print(f"  ✗ Send failed: {e}")
 
 
-def main():
+def main() -> None:
     print("\n" + "=" * 60)
     print("Knock - WoL Magic Packet Test")
     print("=" * 60)
-    print()
 
-    # Test cases
     test_macs = [
         "00:11:22:33:44:55",
         "00-11-22-33-44-55",
         "001122334455",
         "AA:BB:CC:DD:EE:FF",
-        "10:00:00:00:00:00",
+        "invalid-mac",
     ]
 
-    print("Validating MAC addresses...")
+    print("\nValidating MAC addresses...")
     print("-" * 60)
     for mac in test_macs:
-        if validate_mac(mac):
-            print(f"  ✓ Valid: {mac}")
-        else:
-            print(f"  ✗ Invalid: {mac}")
+        mark = "✓" if validate_mac(mac) else "✗"
+        print(f"  {mark} {mac}")
 
-    print("\nGenerating WoL packets...")
+    print("\nGenerating packets...")
     print("-" * 60)
-
     for mac in test_macs:
+        if not validate_mac(mac):
+            print(f"  - Skipped: {mac} (invalid)")
+            continue
+        packet = generate_wol_packet(mac)
+        if packet:
+            assert len(packet) == 102, f"Expected 102 bytes, got {len(packet)}"
+            assert packet[:6] == b"\xff" * 6, "Sync stream incorrect"
+            assert packet[6:12] == packet[12:18], "MAC repetition incorrect"
+            print(f"  ✓ {mac}  →  {len(packet)} bytes  [assertions passed]")
+            print_packet_details(mac, packet)
+
+    # Optional: pass a real MAC as a CLI argument to send a live packet
+    if len(sys.argv) == 2:
+        mac = sys.argv[1]
+        print(f"\nSending live packet for {mac}...")
         if validate_mac(mac):
-            packet = generate_wol_packet(mac)
-            if packet:
-                print_packet_details(mac, packet)
-            else:
-                print(f"  ✗ Failed to generate packet for {mac}")
+            send_test_packet(mac)
         else:
-            print(f"  - Skipped: {mac} (invalid MAC)")
+            print("  ✗ Invalid MAC address")
 
     print("\n" + "=" * 60)
-    print("Test complete!")
+    print("All checks passed.")
     print("=" * 60)
-
-    # Info for sending
-    print("\nInfo: To send a WoL packet:")
-    print("  1. Configure sudo: sudo -n true")
-    print("  2. Run: python3 wol_server.py")
-    print("  3. Or send manually: python3 test_wol.py")
-    print("\nOr use:")
-    print("  sudo ifconfig -i eth0 etherwake - -")
+    print("\nTo send a live packet:  uv run wol-test <MAC>")
+    print("To start the server:    uv run wol-server\n")
 
 
 if __name__ == "__main__":

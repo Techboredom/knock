@@ -105,6 +105,10 @@ Cursor
 stdio.log
 serial.log
 
+# Runtime-generated data (auto-created on startup)
+data/
+security/
+
 # Security
 aws_credentials
 aws-ôme-lock
