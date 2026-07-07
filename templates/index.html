@@ -3,99 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knock - Wake-On-LAN Node Management</title>
+    <title>Knock — Wake-On-LAN</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <div>
-                <h1><i class="fas fa-wifi"></i> Knock</h1>
-                <p>Wake-On-LAN Node Management System</p>
-            </div>
+
+    <!-- ── Header ── -->
+    <header class="page-header">
+        <div class="header-inner">
+            <a href="#" class="brand">
+                <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+                <div>
+                    <div class="brand-name">Knock</div>
+                    <div class="brand-tagline">Wake-On-LAN Manager</div>
+                </div>
+            </a>
             <div class="server-status" id="server-status">
                 <span class="status-dot"></span>
-                Connecting...
+                <span>Connecting…</span>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <nav class="nav">
-            <a href="#add-node" class="nav-link">Add Node</a>
-            <a href="#nodes" class="nav-link active">Nodes</a>
-            <a href="#wake" class="nav-link">Wake</a>
-            <a href="#interfaces" class="nav-link">Interfaces</a>
-        </nav>
+    <!-- ── Nav ── -->
+    <nav class="nav-bar">
+        <div class="nav-inner">
+            <a href="#add-node"   class="nav-link"><i class="fas fa-plus"></i> Add Node</a>
+            <a href="#nodes"      class="nav-link active"><i class="fas fa-server"></i> Nodes</a>
+            <a href="#wake"       class="nav-link"><i class="fas fa-power-off"></i> Wake</a>
+            <a href="#interfaces" class="nav-link"><i class="fas fa-network-wired"></i> Interfaces</a>
+        </div>
+    </nav>
 
-        <main class="main">
-            <div id="toast" class="toast"></div>
+    <!-- ── Toast ── -->
+    <div id="toast" class="toast"></div>
 
-            <!-- Add New Node -->
-            <section id="add-node" class="section">
-                <div class="card">
-                    <h2><i class="fas fa-plus-circle"></i> Add New Node</h2>
+    <!-- ── Content ── -->
+    <main class="content">
+
+        <!-- Add New Node -->
+        <section id="add-node">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><i class="fas fa-plus-circle"></i> Add New Node</span>
+                </div>
+                <div class="card-body">
                     <form id="add-node-form" class="form">
-                        <div class="form-group">
-                            <label for="hostname">
-                                <i class="fas fa-broadcast-tower"></i> Hostname (optional)
-                            </label>
-                            <input type="text" id="hostname" name="hostname" class="input"
-                                   placeholder="e.g., server-01">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="hostname">Hostname</label>
+                                <input type="text" id="hostname" name="hostname"
+                                       placeholder="e.g. server-01">
+                            </div>
+                            <div class="form-group">
+                                <label for="ip">IP Address</label>
+                                <input type="text" id="ip" name="ip"
+                                       placeholder="192.168.1.100">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="ip">
-                                <i class="fas fa-network-wired"></i> IP Address (optional)
-                            </label>
-                            <input type="text" id="ip" name="ip" class="input"
-                                   placeholder="192.168.1.100">
-                        </div>
-                        <div class="form-group">
-                            <label for="mac_address">
-                                <i class="fas fa-microchip"></i> MAC Address *
-                            </label>
-                            <input type="text" id="mac_address" name="mac_address" class="input"
+                            <label for="mac_address">MAC Address <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="mac_address" name="mac_address"
                                    placeholder="00:11:22:33:44:55" required>
-                            <small class="help-text">
-                                Accepted formats: 00:11:22:33:44:55 &nbsp;|&nbsp; 00-11-22-33-44-55 &nbsp;|&nbsp; 001122334455
-                            </small>
+                            <span class="help-text">Formats: 00:11:22:33:44:55 &nbsp;·&nbsp; 00-11-22-33-44-55 &nbsp;·&nbsp; 001122334455</span>
                         </div>
                         <div class="form-group">
-                            <label for="description">
-                                <i class="fas fa-info-circle"></i> Description (optional)
-                            </label>
-                            <textarea id="description" name="description" class="textarea"
-                                      placeholder="Computer description, room, etc." rows="2"></textarea>
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description"
+                                      placeholder="Room, purpose, etc." rows="2"></textarea>
                         </div>
-                        <div class="form-group form-group-inline">
-                            <label>
-                                <input type="checkbox" id="enabled" name="enabled" checked>
-                                Enable for Wake
-                            </label>
-                        </div>
-                        <div class="form-group form-group-inline">
+                        <label class="form-check">
+                            <input type="checkbox" id="enabled" name="enabled" checked>
+                            Enable for Wake
+                        </label>
+                        <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Add Node
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="this.form.reset()">
+                            <button type="button" class="btn btn-ghost" onclick="this.form.reset()">
                                 <i class="fas fa-undo"></i> Clear
                             </button>
                         </div>
                     </form>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Node List -->
-            <section id="nodes" class="section">
-                <div class="card">
-                    <div class="card-header">
-                        <h2>
-                            <i class="fas fa-list"></i> Active Nodes
-                            <span class="node-count">0</span>
-                        </h2>
-                        <button class="btn btn-secondary btn-sm" id="refresh-nodes-btn">
-                            <i class="fas fa-sync"></i> Refresh
-                        </button>
-                    </div>
+        <!-- Node List -->
+        <section id="nodes">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">
+                        <i class="fas fa-server"></i> Nodes
+                        <span class="node-count" id="node-count-badge">0</span>
+                    </span>
+                    <button class="btn btn-ghost btn-sm" id="refresh-nodes-btn">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div class="table-wrap">
                     <table class="table" id="nodes-table">
                         <thead>
                             <tr>
@@ -108,143 +115,132 @@
                             </tr>
                         </thead>
                         <tbody id="nodes-tbody">
-                            <tr>
-                                <td colspan="6" class="empty-message">Loading...</td>
-                            </tr>
+                            <tr><td colspan="6" class="empty-message">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Wake Node -->
-            <section id="wake" class="section">
-                <div class="card">
-                    <h2><i class="fas fa-power-off"></i> Wake Node</h2>
-                    <p class="section-desc">Send a magic packet to wake up a node</p>
-                    <div class="form-group">
-                        <label for="wake-select">
-                            <i class="fas fa-list"></i> Select Node
-                        </label>
-                        <select id="wake-select" class="input">
-                            <option value="">-- Select a node to wake --</option>
+        <!-- Wake Node -->
+        <section id="wake">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><i class="fas fa-power-off"></i> Wake a Node</span>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Select an enabled node and send a magic packet over UDP broadcast.</p>
+                    <div class="form-group" style="max-width:400px">
+                        <label for="wake-select">Node</label>
+                        <select id="wake-select">
+                            <option value="">— select a node —</option>
                         </select>
                     </div>
-                    <div class="form-group form-group-inline">
+                    <div class="form-actions" style="margin-top:.75rem">
                         <button id="wake-btn" class="btn btn-success">
                             <i class="fas fa-broadcast-tower"></i> Wake Node
                         </button>
                     </div>
-                    <div id="wake-status" class="wake-status"></div>
+                    <div id="wake-status"></div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Network Interfaces -->
-            <section id="interfaces" class="section">
-                <div class="card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-network-wired"></i> Network Interfaces</h2>
-                        <button class="btn btn-secondary btn-sm refresh-interfaces">
-                            <i class="fas fa-sync"></i> Refresh
-                        </button>
-                    </div>
+        <!-- Network Interfaces -->
+        <section id="interfaces">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><i class="fas fa-network-wired"></i> Network Interfaces</span>
+                    <button class="btn btn-ghost btn-sm refresh-interfaces">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div class="table-wrap">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Name</th>
+                                <th>Interface</th>
                                 <th>IP Address</th>
                                 <th>State</th>
                             </tr>
                         </thead>
                         <tbody id="interfaces-tbody">
-                            <tr>
-                                <td colspan="3" class="empty-message">Loading...</td>
-                            </tr>
+                            <tr><td colspan="3" class="empty-message">Loading…</td></tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Delete Confirmation Modal -->
-            <div id="delete-modal" class="modal">
-                <div class="modal-content modal-center">
-                    <span class="close">&times;</span>
-                    <h3><i class="fas fa-exclamation-triangle text-warning"></i> Delete Node?</h3>
-                    <div class="modal-body">
-                        <p>This will permanently delete the node. This action cannot be undone.</p>
-                        <p class="mac-address-display" id="delete-mac-display"></p>
+    </main>
+
+    <!-- ── Footer ── -->
+    <footer class="footer">
+        <span>Knock &mdash; Wake-On-LAN Management &nbsp;&copy; 2024</span>
+    </footer>
+
+    <!-- ── Delete Modal ── -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle text-warning"></i> Delete Node?</h3>
+                <button class="modal-close" data-close-modal="delete-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>This will permanently delete the node and cannot be undone.</p>
+                <p class="mac-address-display" id="delete-mac-display"></p>
+            </div>
+            <form id="delete-form">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" data-close-modal="delete-modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Edit Modal ── -->
+    <div id="node-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="modal-title">Edit Node</h3>
+                <button class="modal-close" data-close-modal="node-modal">&times;</button>
+            </div>
+            <form id="node-details-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="modal-mac">MAC Address</label>
+                        <input type="text" id="modal-mac">
                     </div>
-                    <form id="delete-form" class="form-inline">
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                        <button type="button" class="btn btn-secondary"
-                                onclick="document.getElementById('delete-modal').style.display='none'">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Edit Node Modal -->
-            <div id="node-modal" class="modal">
-                <div class="modal-content modal-center modal-large">
-                    <span class="close">&times;</span>
-                    <h3 id="modal-title">Edit Node</h3>
-                    <form id="node-details-form" class="form">
-                        <div class="modal-body">
-                            <div class="form-group">
-                                <label for="modal-mac">
-                                    <i class="fas fa-microchip"></i> MAC Address
-                                </label>
-                                <input type="text" id="modal-mac" class="input">
-                            </div>
-                            <div class="form-group">
-                                <label for="modal-hostname">
-                                    <i class="fas fa-broadcast-tower"></i> Hostname
-                                </label>
-                                <input type="text" id="modal-hostname" class="input">
-                            </div>
-                            <div class="form-group">
-                                <label for="modal-ip">
-                                    <i class="fas fa-network-wired"></i> IP Address
-                                </label>
-                                <input type="text" id="modal-ip" class="input">
-                            </div>
-                            <div class="form-group">
-                                <label for="modal-description">
-                                    <i class="fas fa-info-circle"></i> Description
-                                </label>
-                                <textarea id="modal-description" class="textarea" rows="2"></textarea>
-                            </div>
-                            <div class="form-group form-group-inline">
-                                <label>
-                                    <input type="checkbox" id="modal-enabled">
-                                    Enable Node
-                                </label>
-                            </div>
-                            <div class="form-group form-group-inline">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-secondary"
-                                        onclick="document.getElementById('node-modal').style.display='none'">
-                                    Cancel
-                                </button>
-                            </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="modal-hostname">Hostname</label>
+                            <input type="text" id="modal-hostname">
                         </div>
-                    </form>
+                        <div class="form-group">
+                            <label for="modal-ip">IP Address</label>
+                            <input type="text" id="modal-ip">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-description">Description</label>
+                        <textarea id="modal-description" rows="2"></textarea>
+                    </div>
+                    <label class="form-check">
+                        <input type="checkbox" id="modal-enabled">
+                        Enable Node
+                    </label>
                 </div>
-            </div>
-        </main>
-
-        <footer class="footer">
-            <div class="footer-content">
-                <span class="powered-by">
-                    <i class="fas fa-rocket"></i> Powered by Knock
-                </span>
-                <p>&copy; 2024 Knock - Wake-On-LAN Management Tool</p>
-            </div>
-        </footer>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" data-close-modal="node-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="/static/wol_manager.js"></script>

@@ -109,7 +109,7 @@
     const tbody = document.getElementById('nodes-tbody');
     if (!tbody) return;
 
-    const countEl = document.querySelector('.node-count');
+    const countEl = document.getElementById('node-count-badge');
     if (countEl) countEl.textContent = state.nodes.length;
 
     if (state.nodes.length === 0) {
@@ -121,21 +121,21 @@
     tbody.innerHTML = state.nodes.map(function (node) {
       const enabledBadge = node.enabled
         ? '<span class="badge badge-success">Enabled</span>'
-        : '<span class="badge badge-secondary">Disabled</span>';
+        : '<span class="badge badge-muted">Disabled</span>';
       const wakeDisabled = node.enabled ? '' : ' disabled';
       return (
         '<tr data-id="' + node.id + '">' +
-        '<td>' + escapeHtml(node.mac_address) + '</td>' +
+        '<td><code>' + escapeHtml(node.mac_address) + '</code></td>' +
         '<td>' + escapeHtml(node.hostname || '—') + '</td>' +
         '<td>' + escapeHtml(node.ip_address || '—') + '</td>' +
         '<td>' + enabledBadge + '</td>' +
-        '<td>' + escapeHtml(formatDate(node.last_wol)) + '</td>' +
+        '<td style="font-size:13px;color:var(--text-2)">' + escapeHtml(formatDate(node.last_wol)) + '</td>' +
         '<td class="actions">' +
           '<button class="btn btn-sm btn-success wake-btn"' +
             ' data-id="' + node.id + '"' + wakeDisabled + '>' +
             '<i class="fas fa-power-off"></i> Wake' +
           '</button> ' +
-          '<button class="btn btn-sm btn-secondary edit-btn"' +
+          '<button class="btn btn-sm btn-ghost edit-btn"' +
             ' data-id="' + node.id + '">' +
             '<i class="fas fa-edit"></i>' +
           '</button> ' +
@@ -239,7 +239,7 @@
     pendingDeleteId = nodeId;
     const display = document.getElementById('delete-mac-display');
     if (display) display.textContent = mac;
-    document.getElementById('delete-modal').style.display = 'block';
+    document.getElementById('delete-modal').classList.add('open');
   }
 
   async function confirmDelete(evt) {
@@ -250,7 +250,7 @@
     try {
       await apiFetch(API.nodeById(id), { method: 'DELETE' });
       showToast('Node deleted', 'success');
-      document.getElementById('delete-modal').style.display = 'none';
+      document.getElementById('delete-modal').classList.remove('open');
       await loadNodes();
     } catch (err) {
       showToast('Delete failed: ' + err.message, 'error');
@@ -275,7 +275,7 @@
     const title = document.getElementById('modal-title');
     if (title) title.textContent = 'Edit Node — ' + (node.hostname || node.mac_address);
 
-    document.getElementById('node-modal').style.display = 'block';
+    document.getElementById('node-modal').classList.add('open');
   }
 
   async function handleSaveNode(evt) {
@@ -302,7 +302,7 @@
         body: JSON.stringify(payload),
       });
       showToast('Node updated', 'success');
-      document.getElementById('node-modal').style.display = 'none';
+      document.getElementById('node-modal').classList.remove('open');
       editingNodeId = null;
       await loadNodes();
     } catch (err) {
@@ -327,7 +327,7 @@
       tbody.innerHTML = data.map(function (iface) {
         const stateBadge = iface.state === 'UP'
           ? '<span class="badge badge-success">UP</span>'
-          : '<span class="badge badge-secondary">' + escapeHtml(iface.state) + '</span>';
+          : '<span class="badge badge-muted">' + escapeHtml(iface.state) + '</span>';
         return (
           '<tr>' +
           '<td>' + escapeHtml(iface.name) + '</td>' +
@@ -344,16 +344,31 @@
 
   // ===== Modal helpers =====
 
+  function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('open');
+  }
+
   function initModals() {
-    document.querySelectorAll('.modal .close').forEach(function (btn) {
+    // close buttons: modal-close class or data-close-modal attribute
+    document.querySelectorAll('[data-close-modal]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        btn.closest('.modal').style.display = 'none';
+        closeModal(btn.dataset.closeModal);
       });
     });
+    // backdrop click
     document.querySelectorAll('.modal').forEach(function (modal) {
       modal.addEventListener('click', function (e) {
-        if (e.target === modal) modal.style.display = 'none';
+        if (e.target === modal) modal.classList.remove('open');
       });
+    });
+    // Escape key
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.open').forEach(function (m) {
+          m.classList.remove('open');
+        });
+      }
     });
   }
 
