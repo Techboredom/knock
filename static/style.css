@@ -541,6 +541,157 @@ body {
   .btn-sm { height: 32px; }
 }
 
+/* ── Documentation ── */
+.docs-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-toc a {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background var(--t), color var(--t), border-color var(--t);
+}
+
+.docs-toc a:hover {
+  background: var(--brand-light);
+  color: var(--brand-dark);
+  border-color: var(--brand);
+}
+
+.docs-section {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.docs-section:last-child { border-bottom: none; padding-bottom: 0; }
+
+.docs-section h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docs-section h3 i { color: var(--brand); font-size: 13px; }
+
+.docs-section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 1rem 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.docs-section p {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.7;
+  margin-bottom: 0.6rem;
+}
+
+.docs-section ul,
+.docs-section ol {
+  padding-left: 1.4rem;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.8;
+  margin-bottom: 0.75rem;
+}
+
+pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  font-family: 'Courier New', 'Consolas', monospace;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0.5rem 0 0.75rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-theme="dark"] pre { background: rgba(0,0,0,.3); }
+
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0.75rem 0;
+}
+
+.callout i { margin-top: 1px; flex-shrink: 0; }
+
+.callout-warning {
+  background: #fef3c7;
+  border-left: 3px solid var(--warning);
+  color: #78350f;
+}
+
+.callout-info {
+  background: var(--brand-light);
+  border-left: 3px solid var(--brand);
+  color: var(--brand-dark);
+}
+
+[data-theme="dark"] .callout-warning { background: #2d1e00; color: #fcd34d; }
+[data-theme="dark"] .callout-info    { background: #1e1b4b; color: #a5b4fc; }
+
+.subnet-option {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.subnet-option:last-of-type { border-bottom: none; }
+
+.subnet-num {
+  width: 26px;
+  height: 26px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.subnet-content { flex: 1; min-width: 0; }
+.subnet-content h4 { margin-top: 0; }
+.subnet-content p  { margin-bottom: 0.4rem; }
+
+.badge-warning { background: #fef3c7; color: #92400e; }
+.badge-danger  { background: var(--danger-bg); color: var(--danger); }
+
+[data-theme="dark"] .badge-warning { background: #2d1e00; color: #fcd34d; }
+[data-theme="dark"] .badge-danger  { background: #450a0a; color: #fca5a5; }
+
 /* ── Theme toggle button ── */
 .theme-toggle {
   background: none;

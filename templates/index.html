@@ -46,6 +46,7 @@
             <a href="#nodes"      class="nav-link active"><i class="fas fa-server"></i> Nodes</a>
             <a href="#wake"       class="nav-link"><i class="fas fa-power-off"></i> Wake</a>
             <a href="#interfaces" class="nav-link"><i class="fas fa-network-wired"></i> Interfaces</a>
+            <a href="#docs"       class="nav-link"><i class="fas fa-book"></i> Docs</a>
         </div>
     </nav>
 
@@ -184,6 +185,265 @@
                 </div>
             </div>
         </section>
+
+        <!-- ── Documentation ── -->
+        <section id="docs">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><i class="fas fa-book"></i> Documentation</span>
+                </div>
+                <div class="card-body">
+
+                    <!-- TOC -->
+                    <nav class="docs-toc">
+                        <a href="#doc-overview">Overview</a>
+                        <a href="#doc-how-wol">How WoL Works</a>
+                        <a href="#doc-mac">MAC Formats</a>
+                        <a href="#doc-cross-subnet">Cross-Subnet</a>
+                        <a href="#doc-api">API Reference</a>
+                        <a href="#doc-troubleshooting">Troubleshooting</a>
+                    </nav>
+
+                    <!-- Overview -->
+                    <div class="docs-section" id="doc-overview">
+                        <h3><i class="fas fa-info-circle"></i> Overview</h3>
+                        <p>
+                            Knock is a lightweight web application for managing and waking compute nodes
+                            using Wake-On-LAN magic packets. Add a node once by MAC address and wake it
+                            from any browser on your network.
+                        </p>
+                        <ul>
+                            <li>Add, edit, and delete nodes via the web UI or REST API</li>
+                            <li>Sends a standard 102-byte magic packet over UDP broadcast — no <code>sudo</code> required</li>
+                            <li>Nodes persist in a local JSON file; no database needed</li>
+                            <li>Dark mode, mobile-responsive interface</li>
+                        </ul>
+                    </div>
+
+                    <!-- How WoL Works -->
+                    <div class="docs-section" id="doc-how-wol">
+                        <h3><i class="fas fa-bolt"></i> How Wake-On-LAN Works</h3>
+                        <p>
+                            When you click <strong>Wake</strong>, Knock sends a 102-byte <em>magic packet</em>
+                            over UDP broadcast to port 9. The target machine's NIC listens for this packet
+                            even while the system is powered off (as long as it receives standby power).
+                        </p>
+                        <h4>Packet structure</h4>
+                        <pre>Bytes  0–5   │ FF FF FF FF FF FF          (6-byte sync stream)
+Bytes  6–11  │ Target MAC address         (first repetition)
+Bytes 12–17  │ Target MAC address         (second repetition)
+  …          │   …
+Bytes 96–101 │ Target MAC address         (sixteenth repetition)
+─────────────┴──────────────────────────
+Total: 102 bytes, sent via UDP to 255.255.255.255:9</pre>
+                        <h4>Requirements on the target machine</h4>
+                        <ul>
+                            <li>Wake-On-LAN enabled in BIOS/UEFI</li>
+                            <li>WoL enabled on the NIC — on Linux: <code>ethtool -s eth0 wol g</code></li>
+                            <li>The machine must be on the same Layer 2 segment as Knock, <em>or</em> the network must be configured to forward the packet (see Cross-Subnet below)</li>
+                        </ul>
+                    </div>
+
+                    <!-- MAC Formats -->
+                    <div class="docs-section" id="doc-mac">
+                        <h3><i class="fas fa-microchip"></i> MAC Address Formats</h3>
+                        <p>Knock accepts any of the following formats and normalises them to <code>xx:xx:xx:xx:xx:xx</code> on save:</p>
+                        <pre>00:11:22:33:44:55      ← colon-separated (most common)
+00-11-22-33-44-55      ← hyphen-separated
+001122334455           ← plain hex string</pre>
+                        <p>Find a machine's MAC address with:</p>
+                        <pre># Linux
+ip link show
+# macOS
+ifconfig | grep ether
+# Windows
+ipconfig /all</pre>
+                    </div>
+
+                    <!-- Cross-Subnet -->
+                    <div class="docs-section" id="doc-cross-subnet">
+                        <h3><i class="fas fa-project-diagram"></i> Waking Nodes Across Subnets</h3>
+                        <p>
+                            UDP broadcast (<code>255.255.255.255</code>) is confined to the local subnet —
+                            routers drop it by default. If Knock and the target are on different network
+                            segments, one of the following approaches is needed.
+                        </p>
+
+                        <div class="subnet-option">
+                            <div class="subnet-num">1</div>
+                            <div class="subnet-content">
+                                <h4>Run Knock on the same subnet</h4>
+                                <p>The simplest fix. Deploy Knock on any machine that shares a Layer 2 segment with the targets. Broadcast stays local, no router changes required.</p>
+                                <pre>[Browser] ──HTTP──► [Knock @ 192.168.10.x] ──UDP broadcast──► [Target @ 192.168.10.y]</pre>
+                            </div>
+                        </div>
+
+                        <div class="subnet-option">
+                            <div class="subnet-num">2</div>
+                            <div class="subnet-content">
+                                <h4>Directed broadcast (router config)</h4>
+                                <p>
+                                    Send the packet to the subnet's broadcast address (e.g. <code>192.168.20.255</code>
+                                    for a <code>/24</code>) rather than <code>255.255.255.255</code>. Many routers
+                                    can be configured to forward directed broadcasts.
+                                </p>
+                                <p>On a Cisco IOS router, enable it per interface:</p>
+                                <pre>interface GigabitEthernet0/1
+ ip directed-broadcast</pre>
+                                <div class="callout callout-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Directed broadcast forwarding is disabled by default because it can amplify DDoS attacks (Smurf attack). Only enable it on trusted internal interfaces.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="subnet-option">
+                            <div class="subnet-num">3</div>
+                            <div class="subnet-content">
+                                <h4>UDP relay / WoL proxy</h4>
+                                <p>
+                                    Run a small agent on the remote subnet that listens for a forwarded unicast
+                                    packet and re-broadcasts it locally as a magic packet.
+                                </p>
+                                <pre>[Knock] ──UDP unicast──► [relay @ 192.168.20.x] ──broadcast──► [Target @ 192.168.20.y]</pre>
+                                <p>Relay options:</p>
+                                <ul>
+                                    <li><code>wol-relay</code> — lightweight daemon, listens on a unicast port and rebroadcasts</li>
+                                    <li>Home Assistant — built-in WoL integration, place an instance per subnet</li>
+                                    <li>OpenWrt <code>etherwake</code> — trigger via SSH from the Knock host</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="subnet-option">
+                            <div class="subnet-num">4</div>
+                            <div class="subnet-content">
+                                <h4>SSH + remote etherwake</h4>
+                                <p>
+                                    If you have SSH access to any machine on the remote subnet, trigger
+                                    <code>wakeonlan</code> or <code>etherwake</code> over SSH — no relay daemon needed.
+                                </p>
+                                <pre>ssh user@remote-host "wakeonlan 00:11:22:33:44:55"
+# or
+ssh user@remote-host "etherwake -i eth0 00:11:22:33:44:55"</pre>
+                            </div>
+                        </div>
+
+                        <div class="subnet-option">
+                            <div class="subnet-num">5</div>
+                            <div class="subnet-content">
+                                <h4>VLAN-aware switch WoL passthrough</h4>
+                                <p>
+                                    Some managed switches (Ubiquiti, Cisco SG series, HP ProCurve) can pass
+                                    magic packets between VLANs at Layer 2. Configured on the switch itself —
+                                    no code changes needed. Check your switch docs for <em>"WoL across VLANs"</em>
+                                    or <em>"magic packet forwarding"</em>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="subnet-option">
+                            <div class="subnet-num">6</div>
+                            <div class="subnet-content">
+                                <h4>VPN / site-to-site tunnel</h4>
+                                <p>
+                                    If the remote subnet is connected via a site-to-site VPN (WireGuard, IPsec, etc.),
+                                    the VPN gateway on the remote side is a machine on that subnet. Install Knock
+                                    there, or use the SSH method through the tunnel.
+                                </p>
+                            </div>
+                        </div>
+
+                        <h4 style="margin-top:1.25rem">Summary</h4>
+                        <div class="table-wrap">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Approach</th>
+                                        <th>Router change</th>
+                                        <th>Extra software</th>
+                                        <th>Complexity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>Run Knock on same subnet</td><td>No</td><td>No</td><td>Low</td></tr>
+                                    <tr><td>Directed broadcast</td><td>Yes (per interface)</td><td>No</td><td>Low–Medium</td></tr>
+                                    <tr><td>UDP relay agent</td><td>No</td><td>Yes (remote host)</td><td>Medium</td></tr>
+                                    <tr><td>SSH + etherwake</td><td>No</td><td><code>wakeonlan</code> / <code>etherwake</code></td><td>Low</td></tr>
+                                    <tr><td>Switch WoL passthrough</td><td>Switch config</td><td>No</td><td>Low–Medium</td></tr>
+                                    <tr><td>VPN gateway</td><td>No</td><td>VPN (already present)</td><td>Low</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- API Reference -->
+                    <div class="docs-section" id="doc-api">
+                        <h3><i class="fas fa-code"></i> API Reference</h3>
+                        <p>All endpoints return JSON. The base URL is <code>http://&lt;host&gt;:5000</code>.</p>
+                        <div class="table-wrap">
+                            <table class="table">
+                                <thead>
+                                    <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><span class="badge badge-brand">GET</span></td><td><code>/api/status</code></td><td>Server status and node count</td></tr>
+                                    <tr><td><span class="badge badge-brand">GET</span></td><td><code>/api/nodes</code></td><td>List all nodes</td></tr>
+                                    <tr><td><span class="badge badge-brand">GET</span></td><td><code>/api/nodes?enabled_only=true</code></td><td>List enabled nodes only</td></tr>
+                                    <tr><td><span class="badge badge-brand">GET</span></td><td><code>/api/nodes/&lt;id&gt;</code></td><td>Get a specific node</td></tr>
+                                    <tr><td><span class="badge badge-success">POST</span></td><td><code>/api/nodes</code></td><td>Create a node</td></tr>
+                                    <tr><td><span class="badge badge-warning">PUT</span></td><td><code>/api/nodes/&lt;id&gt;</code></td><td>Update a node</td></tr>
+                                    <tr><td><span class="badge badge-danger">DELETE</span></td><td><code>/api/nodes/&lt;id&gt;</code></td><td>Delete a node</td></tr>
+                                    <tr><td><span class="badge badge-success">POST</span></td><td><code>/api/nodes/&lt;id&gt;/wake</code></td><td>Send WoL magic packet</td></tr>
+                                    <tr><td><span class="badge badge-brand">GET</span></td><td><code>/api/interfaces</code></td><td>List network interfaces</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <h4>Example: create a node</h4>
+                        <pre>curl -X POST http://localhost:5000/api/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"mac_address":"00:11:22:33:44:55","hostname":"server-01","enabled":true}'</pre>
+                        <h4>Example: wake a node</h4>
+                        <pre>curl -X POST http://localhost:5000/api/nodes/0/wake</pre>
+                    </div>
+
+                    <!-- Troubleshooting -->
+                    <div class="docs-section" id="doc-troubleshooting">
+                        <h3><i class="fas fa-wrench"></i> Troubleshooting</h3>
+
+                        <h4>Node does not wake up</h4>
+                        <ol>
+                            <li>Confirm WoL is enabled in the target machine's BIOS/UEFI.</li>
+                            <li>Confirm WoL is enabled on the NIC:
+                                <pre>ethtool eth0 | grep Wake   # check current state
+ethtool -s eth0 wol g      # enable magic packet wake</pre>
+                            </li>
+                            <li>Verify the MAC address stored in Knock matches the target's NIC MAC exactly.</li>
+                            <li>Confirm Knock and the target are on the same subnet, or that one of the cross-subnet approaches above is configured.</li>
+                        </ol>
+
+                        <h4>Port 5000 already in use</h4>
+                        <pre>WOL_PORT=8080 python wol_server.py
+# or with uv:
+WOL_PORT=8080 uv run wol-server</pre>
+
+                        <h4>Server status shows Disconnected</h4>
+                        <ul>
+                            <li>Check the server is running: <code>ps aux | grep wol_server</code></li>
+                            <li>Verify port 5000 is not blocked by a firewall</li>
+                            <li>In Docker on macOS/Windows, <code>network_mode: host</code> is not supported — run the server directly with Python instead</li>
+                        </ul>
+
+                        <h4>Docker container can't send broadcast</h4>
+                        <div class="callout callout-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>The production <code>docker-compose.yml</code> uses <code>network_mode: host</code> so the container shares the host's network stack and UDP broadcast reaches the LAN. This only works on Linux hosts.</span>
+                        </div>
+                    </div>
+
+                </div><!-- card-body -->
+            </div><!-- card -->
+        </section><!-- #docs -->
 
     </main>
 
