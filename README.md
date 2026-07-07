@@ -158,6 +158,95 @@ The server sends a 102-byte magic packet over UDP broadcast (port 9):
 
 The target machine must have Wake-On-LAN enabled in its BIOS/UEFI and network adapter settings.
 
+## Waking Nodes Across Subnets
+
+By default, UDP broadcast (`255.255.255.255`) is confined to the local subnet — routers drop it. If Knock is running on a different network segment than the target machine, you need one of the following approaches.
+
+### Option 1 — Run Knock on the same subnet
+
+The simplest solution. Deploy a Knock instance (or just the server script) on a machine that shares a Layer 2 segment with the targets. Broadcast stays local, everything works without router changes.
+
+```
+[Browser] ──HTTP──► [Knock on 192.168.10.x] ──UDP broadcast──► [Target on 192.168.10.y]
+```
+
+### Option 2 — Directed broadcast (router/switch config)
+
+Instead of `255.255.255.255`, send the packet to the subnet's broadcast address (e.g. `192.168.20.255` for a `/24`). Many routers can be configured to forward directed broadcasts.
+
+**On a Cisco IOS router**, enable forwarding on the target interface:
+
+```
+interface GigabitEthernet0/1
+ ip directed-broadcast
+```
+
+> ⚠️ Directed broadcast forwarding is disabled by default on most routers as it can amplify DDoS attacks (Smurf attack). Only enable it on trusted internal interfaces.
+
+Knock currently sends to `<broadcast>` (resolved to `255.255.255.255`). To target a specific subnet broadcast instead, you can send the packet manually:
+
+```bash
+# Send a magic packet directly to a subnet broadcast address
+python3 - <<'EOF'
+import socket, struct
+mac = "00:11:22:33:44:55"
+mac_bytes = bytes.fromhex(mac.replace(":", ""))
+packet = b"\xff" * 6 + mac_bytes * 16
+with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    s.sendto(packet, ("192.168.20.255", 9))   # ← target subnet broadcast
+EOF
+```
+
+### Option 3 — UDP relay / WoL proxy
+
+Run a small relay agent on the remote subnet that listens for forwarded packets and re-broadcasts them locally. Tools that do this:
+
+| Tool | Notes |
+|------|-------|
+| `wol-relay` (various) | Listens on a unicast port, rebroadcasts as WoL on the local subnet |
+| `wakeonlan` daemon | Can be configured to bridge segments |
+| Home Assistant | Has a built-in WoL integration that can be placed per-subnet |
+| OpenWrt `etherwake` | Can be triggered via SSH from Knock's host using a post-wake hook |
+
+A typical relay setup:
+
+```
+[Knock] ──UDP unicast──► [relay on 192.168.20.x] ──UDP broadcast──► [Target on 192.168.20.y]
+         port 9 / 7                                  port 9
+```
+
+### Option 4 — SSH tunnel + remote etherwake
+
+If you have SSH access to a machine on the remote subnet, you can trigger `etherwake` or `wakeonlan` over SSH without any relay daemon:
+
+```bash
+ssh user@remote-host "wakeonlan 00:11:22:33:44:55"
+# or
+ssh user@remote-host "etherwake -i eth0 00:11:22:33:44:55"
+```
+
+This can be wired into a wrapper script and called from the server after the magic packet is sent, or used as the primary wake mechanism for that subnet.
+
+### Option 5 — VLAN-aware switches with WoL passthrough
+
+Some managed switches (Ubiquiti, Cisco SG series, HP ProCurve) support passing WoL packets between VLANs at Layer 2. This is configured on the switch itself and is transparent to Knock — no code changes needed. Check your switch documentation for "WoL across VLANs" or "magic packet forwarding".
+
+### Option 6 — IPsec / WireGuard VPN
+
+If the remote subnet is connected via a site-to-site VPN, the VPN gateway on the remote side is usually a machine on that subnet — install Knock there, or use the SSH method above through the VPN tunnel.
+
+### Summary
+
+| Approach | Router change needed | Extra software | Complexity |
+|---|---|---|---|
+| Run Knock on same subnet | No | No | Low |
+| Directed broadcast | Yes (per interface) | No | Low–Medium |
+| UDP relay agent | No | Yes (on remote host) | Medium |
+| SSH + etherwake | No | `wakeonlan`/`etherwake` | Low |
+| Switch WoL passthrough | Switch config | No | Low–Medium |
+| VPN gateway | No | VPN (already present) | Low |
+
 ## Troubleshooting
 
 **Node does not wake up**
