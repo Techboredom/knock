@@ -46,9 +46,9 @@ wol-server = "wol_server:main"
 wol-test = "packet_test:main"
 
 [project.urls]
-Homepage = "https://github.com/yourname/knock"
-Documentation = "https://github.com/yourname/knock#readme"
-Issues = "https://github.com/yourname/knock/issues"
+Homepage = "https://github.com/Techboredom/knock"
+Documentation = "https://github.com/Techboredom/knock#readme"
+Issues = "https://github.com/Techboredom/knock/issues"
 
 [tool.uv]
 dev-dependencies = [
