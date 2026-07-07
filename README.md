@@ -1,146 +1,179 @@
 # Computer_Waker
 
-A Python web application for Wake-On-LAN (WoL) node management. This tool allows you to remotely power on Ubuntu compute nodes using magic packets through an intuitive web interface.
+A Python web application for Wake-On-LAN (WoL) node management. Add your compute nodes once, then wake them up from any browser with a single click.
 
 ## Features
 
-- **Node Management**: Add, edit, and manage multiple compute nodes
-- **Wake-On-LAN**: Send magic packets to wake up nodes from sleep
-- **Network Interface Detection**: Automatically detects available network interfaces
-- **Web Interface**: Clean, responsive web UI for managing nodes
-- **JSON Storage**: Persistent node storage in JSON format
-- **Status Monitoring**: Real-time server status and connection tracking
+- **Node Management** — Add, edit, and delete compute nodes via the web UI
+- **Wake-On-LAN** — Sends a standard 102-byte magic packet via UDP broadcast (no `sudo` required)
+- **Network Interface View** — Lists all host interfaces and their IP addresses
+- **Persistent Storage** — Nodes saved to a local JSON file; no database needed
+- **REST API** — All operations available as JSON endpoints
+- **Docker support** — Production and development compose files included
 
-## Installation
+## Requirements
 
-### Prerequisites
+- Python 3.10 or higher
+- Dependencies: `flask`, `psutil`, `pyyaml`, `python-dotenv`
 
-- Python 3.7 or higher
-- pip (Python package manager)
+## Quick Start
 
-### Install Dependencies
+### With uv (recommended)
+
+[uv](https://docs.astral.sh/uv/) manages the virtual environment and dependencies automatically from `pyproject.toml`.
 
 ```bash
-pip install -r requirements.txt
+# Install uv if you don't have it
+pip install uv
+# or on macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create the virtual environment and install all dependencies
+uv sync
+
+# Start the server (uses the entry point defined in pyproject.toml)
+uv run wol-server
 ```
 
-Or install manually:
+`uv run` activates the managed environment automatically — no manual `source .venv/bin/activate` needed.
+
+You can also drop into the environment for one-off commands:
 
 ```bash
-pip install flask pyyaml
+uv run python wol_server.py          # run directly
+uv run wol-manager list              # CLI utility
 ```
 
-## Usage
-
-### Run the Server
+### With pip
 
 ```bash
-cd Computer_Waker
+pip install flask psutil pyyaml python-dotenv
 python wol_server.py
 ```
 
-The web interface will be available at `http://localhost:5000`
+The web interface will be available at `http://localhost:5000`.
 
-### Manual API Usage
+### Run with Docker (production)
 
 ```bash
-# List all nodes
-curl http://localhost:5000/api/nodes
-
-# Wake up a node by ID
-curl -X POST http://localhost:5000/api/nodes/1/wake -H "Content-Type: application/json"
-
-# Get status
-curl http://localhost:5000/api/status
+docker compose up -d
 ```
 
-### Web Interface
+The container uses `network_mode: host` so UDP broadcast packets reach the LAN. The server listens on port 5000 of the host machine.
 
-Access the web interface in your browser:
+### Run with Docker (development)
 
+```bash
+docker compose -f docker-compose.dev.yml up
 ```
-Browser: http://localhost:5000
+
+Source files are bind-mounted into the container — restart the container to pick up changes.
+
+## CLI Utility
+
+`wol_manager.py` provides a simple command-line interface for scripting:
+
+```bash
+# List all configured nodes
+python wol_manager.py list
+
+# Wake a node by ID
+python wol_manager.py wake 0
 ```
 
-### API Endpoints
+## API Reference
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Web interface |
-| GET | `/api/status` | Server status and info |
-| GET | `/api/nodes` | Get all nodes |
-| GET | `/api/nodes/<id>` | Get specific node |
-| POST | `/api/nodes` | Create a new node |
+| GET | `/api/status` | Server status |
+| GET | `/api/nodes` | List all nodes |
+| GET | `/api/nodes?enabled_only=true` | List enabled nodes only |
+| GET | `/api/nodes/<id>` | Get a specific node |
+| POST | `/api/nodes` | Create a node |
 | PUT | `/api/nodes/<id>` | Update a node |
 | DELETE | `/api/nodes/<id>` | Delete a node |
-| POST | `/api/nodes/<id>/wake` | Wake a node |
+| POST | `/api/nodes/<id>/wake` | Send WoL magic packet |
+| GET | `/api/interfaces` | List network interfaces |
 
-## Configuration
+### Create a node (example)
 
-### File Structure
-
-```
-Computer_Waker/
-├── wol_server.py          # Main application
-├── requirements.txt       # Python dependencies
-├── README.md             # This file
-├── data/
-│   └── nodes.json        # Node storage (auto-created)
-└── security/
-    └── wol_config.json   # Configuration (auto-created)
+```bash
+curl -X POST http://localhost:5000/api/nodes \
+  -H "Content-Type: application/json" \
+  -d '{"mac_address": "00:11:22:33:44:55", "hostname": "server-01", "enabled": true}'
 ```
 
-### Environment Variables
+### Wake a node
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `WOL_PORT` | Server port | 5000 |
-| `WOL_HOST` | Host to bind to | 0.0.0.0 |
+```bash
+curl -X POST http://localhost:5000/api/nodes/0/wake
+```
 
-## MAC Address Formats
+## Accepted MAC Address Formats
 
-This application supports multiple MAC address formats:
+All formats are normalized to `xx:xx:xx:xx:xx:xx` on save.
 
 ```
 00:11:22:33:44:55
 00-11-22-33-44-55
 001122334455
-00:11:22:33:44:55-uu
 ```
 
-## Security Notes
+## Environment Variables
 
-- The application uses sudo commands to send magic packets (required on Linux)
-- Sudo must be configured correctly on the server
-- Node IDs are stored locally in the data directory
-- No external database is used for persistence
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WOL_HOST` | `0.0.0.0` | Interface to bind to |
+| `WOL_PORT` | `5000` | Port to listen on |
+
+## Project Structure
+
+```
+Knock_web/
+├── wol_server.py          # Flask application and REST API
+├── wol_manager.py         # CLI utility
+├── Dockerfile
+├── docker-compose.yml     # Production deployment
+├── docker-compose.dev.yml # Development (live source mount)
+├── pyproject.toml
+├── setup.sh               # First-time setup helper
+├── templates/
+│   └── index.html         # Web UI
+├── static/
+│   ├── wol_manager.js     # Front-end logic
+│   └── style.css
+├── data/
+│   └── nodes.json         # Auto-created on first save
+└── security/
+    └── wol_config.json    # Auto-created on startup
+```
+
+## How WoL Works
+
+The server sends a 102-byte magic packet over UDP broadcast (port 9):
+
+- **Bytes 0–5**: `0xFF × 6` (synchronisation stream)
+- **Bytes 6–101**: target MAC address repeated 16 times
+
+The target machine must have Wake-On-LAN enabled in its BIOS/UEFI and network adapter settings.
 
 ## Troubleshooting
 
-### Sudo Not Available
+**Node does not wake up**
+1. Confirm WoL is enabled in the target machine's BIOS/UEFI.
+2. Confirm WoL is enabled on the NIC (`ethtool -s <iface> wol g` on Linux).
+3. Verify the MAC address is correct.
+4. Ensure the server and target are on the same subnet (or that your router forwards the broadcast).
 
-Make sure you have sudo properly configured on the server:
-
+**Port 5000 already in use**
 ```bash
-sudo -n true
+WOL_PORT=8080 python wol_server.py
 ```
 
-### Node Not Waking
-
-1. Verify WoL is enabled on the target machine
-2. Check network connectivity
-3. Verify the MAC address is correct
-
-### Connection Issues
-
-- Check if the server is running: `ps aux | grep wol_server`
-- Ensure port 5000 is not blocked by a firewall
-- Verify the server is accessible from your browser
+**Server not starting in Docker**
+Make sure Docker has permission to use host networking. On Linux this works by default; on macOS/Windows, Docker's virtualization layer means `network_mode: host` is not supported — run the server directly with Python instead.
 
 ## License
 
-This project is free and open-source. Feel free to modify and distribute as needed.
-
-## Author
-
-For questions or issues, please open an issue in the repository.
+MIT — free to use, modify, and distribute.

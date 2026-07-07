@@ -5,21 +5,28 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: "computer-waker-wol"
+    container_name: computer-waker-wol
     restart: unless-stopped
-    network_mode: "host"
-    ports: ["5000:5000"]
+    # network_mode: host gives the container full access to the host network,
+    # which is required so the UDP broadcast reaches the LAN.
+    # NOTE: ports: mapping is incompatible with network_mode: host — the
+    # container binds directly on the host's port 5000.
+    network_mode: host
     environment:
-      WOL_PORT: "5000"
       WOL_HOST: "0.0.0.0"
-      FLASK_ENV: "production"
+      WOL_PORT: "5000"
       PYTHONUNBUFFERED: "1"
     volumes:
-      - "data:/app/data"
-      - "security:/app/security"
+      - data:/app/data
+      - security:/app/security
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+
+volumes:
+  data:
+  security:

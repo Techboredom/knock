@@ -5,25 +5,25 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder
+      target: builder        # uses the builder stage — packages installed, no source copy
     container_name: computer-waker-dev
     restart: unless-stopped
-    ports:
-      - "7000:5000"
+    network_mode: host       # required for UDP broadcast to reach the LAN
     environment:
-      - FLASK_DEBUG=1
-      - FLASK_ENV=development
-      - WOL_PORT=5000
-      - WOL_HOST=0.0.0.0
+      FLASK_DEBUG: "1"
+      FLASK_ENV: development
+      WOL_HOST: "0.0.0.0"
+      WOL_PORT: "5000"
+      PYTHONUNBUFFERED: "1"
     volumes:
-      - .:/app
-      - /app/__pycache__
-      - /app/node_modules
+      - .:/app               # live-mount source so edits take effect on restart
+      - /app/__pycache__     # keep pycache inside the container
     stdin_open: true
     tty: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s

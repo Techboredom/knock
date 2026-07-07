@@ -31,6 +31,10 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
 # Check if already running
 print_info "Checking if Computer_Waker is already running..."
 if ps aux | grep -q "python.*wol_server"; then
@@ -45,22 +49,7 @@ fi
 print_success "Computer_Waker is not running"
 echo ""
 
-# Check if sudo is available (required for sending WoL packets)
-print_info "Checking sudo availability..."
-if sudo -n true 2>/dev/null; then
-    print_success "Sudo is available! (required for WoL operations)"
-else
-    print_warning "Sudo is NOT available!"
-    echo ""
-    echo "IMPORTANT: Sudo must be configured for sending magic packets"
-    echo ""
-    echo "To configure sudo without password:"
-    echo "  sudo something"
-    echo ""
-    echo "Then verify with: sudo -n true"
-    print_warning "WoL functionality will be disabled without sudo!"
-    echo ""
-fi
+# WoL packets are sent via UDP broadcast — no sudo required.
 
 # Setup environment
 print_info "Setting up environment..."
@@ -83,7 +72,7 @@ if uv --version &> /dev/null; then
     uv sync
 elif pip3 --version &> /dev/null; then
     print_success "Using pip package manager..."
-    pip3 install -r requirements.txt
+    pip3 install flask psutil pyyaml python-dotenv
 else
     print_error "Neither UV nor pip is available!"
     echo "Please install one of:"
